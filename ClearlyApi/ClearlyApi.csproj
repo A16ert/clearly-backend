@@ -21,4 +21,24 @@
       <ProjectReference Include="..\Utils\Utils.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Files\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="Files\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Files\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Remove="Files\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Files\web.config" />
+    </ItemGroup>
+
 </Project>
