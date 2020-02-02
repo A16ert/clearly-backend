@@ -1,15 +1,21 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using ClearlyApi;
 using clearlyApi.Dto.Request;
 using clearlyApi.Dto.Response;
 using ClearlyApi.Entities;
 using ClearlyApi.Enums;
 using ClearlyApi.Services.Auth;
+using ClearlyApi.Services.Chat;
+using ClearlyApi.Services.Chat.Manager;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using Utils;
 
 namespace clearlyApi.Controllers
@@ -21,10 +27,18 @@ namespace clearlyApi.Controllers
         private ApplicationContext DbContext { get; set; }
         private IAuthService AuthService { get; set; }
 
-        public AdminController(ApplicationContext dbContext, IAuthService authService)
+        private ChatMessageHandler WebSocketHandler { get; set; }
+        
+        public AdminController(
+            ApplicationContext dbContext,
+            IAuthService authService,
+            ChatMessageHandler webSocketHandler
+            )
         {
-            this.DbContext = dbContext;
-            this.AuthService = authService;
+            DbContext = dbContext;
+            AuthService = authService;
+            
+            WebSocketHandler = webSocketHandler;
         }
 
         [HttpPost("loginAdminTest")]
@@ -108,6 +122,88 @@ namespace clearlyApi.Controllers
             {
                 Data = notifications
             });
+        }
+        
+        [Authorize]
+        [HttpPost("sendPhoto/{toLogin}")]
+        public async Task<IActionResult> SendPhoto(IFormFile file, string toLogin)
+        {
+            var user = DbContext.Users
+                .FirstOrDefault(x => x.Login == User.Identity.Name && x.UserType == UserType.Admin);
+
+            if (user == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+            
+            if (file == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "File empty"
+                });
+
+            var toUser = DbContext.Users
+                .FirstOrDefault(x => x.Login == toLogin);
+            if (toUser == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "To User not found"
+                });
+
+            var fileName = $"{CryptHelper.CreateMD5(DateTime.Now.ToString())}{Path.GetExtension(file.FileName)}";
+            var path = $"{Directory.GetCurrentDirectory()}\\Files\\";
+
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            using (var fileStream = new FileStream(path + fileName, FileMode.Create))
+            {
+                await file.CopyToAsync(fileStream);
+            }
+
+            var message = new Message
+            {
+                Type = MessageType.Photo,
+                Content = fileName,
+                Created = DateTime.UtcNow,
+                UserId = toUser.Id,
+                AdminId = user.Id,
+                IsFromAdmin = true
+            };
+
+            DbContext.Messages.Add(message);
+            DbContext.SaveChanges();
+
+            SendMessageSocket(toUser.Login, new MessageDTO(message) { Data = fileName});
+
+
+            var agePickerMessage = new Message
+            {
+                Type = MessageType.AgePicker,
+                Created = DateTime.UtcNow,
+                UserId = toUser.Id,
+                AdminId = user.Id,
+                IsFromAdmin = true
+            };
+            DbContext.Messages.Add(agePickerMessage);
+            DbContext.SaveChanges();
+
+            SendMessageSocket(toUser.Login, new MessageDTO(agePickerMessage));
+
+            return Json(new BaseResponse());
+        }
+        
+        
+        private async Task SendMessageSocket(string login, MessageDTO message)
+        {
+            await WebSocketHandler.SendMessageAsync(
+                login,
+                JsonConvert.SerializeObject(message)
+            );
         }
     }
 }
