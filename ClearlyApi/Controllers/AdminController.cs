@@ -26,19 +26,19 @@ namespace clearlyApi.Controllers
             this.DbContext = dbContext;
             this.AuthService = authService;
         }
-        
+
         [HttpPost("loginAdminTest")]
         public IActionResult AdminAuthOrRegister([FromBody] AuthRequest request)
         {
             if (request == null)
-                return Json(new { Status = false, Message = "Request cannot be null" });
+                return Json(new {Status = false, Message = "Request cannot be null"});
 
             if (!Validator.TryValidateObject(request, new ValidationContext(request), null, true))
-                return Json(new { Status = false, Message = "Required Property Not Found" });
+                return Json(new {Status = false, Message = "Required Property Not Found"});
 
-            if(request.Code != "12345")
-                return Json(new { Status = false, Message = "неверный пароль" });
-            
+            if (request.Code != "12345")
+                return Json(new {Status = false, Message = "неверный пароль"});
+
             var user = DbContext.Users.FirstOrDefault(x => x.Login == request.Login);
             if (user == null)
             {
@@ -54,14 +54,14 @@ namespace clearlyApi.Controllers
                 DbContext.SaveChanges();
             }
             // если пользователь не админ
-            else if(user.UserType == UserType.User)
-                    return Json(new { Status = false, Message = "Пользователь не найден" });
+            else if (user.UserType == UserType.User)
+                return Json(new {Status = false, Message = "Пользователь не найден"});
 
             DbContext.SaveChanges();
 
             var token = AuthService.CreateToken(user);
 
-            return Json(new SignInResponse() { SecurityToken = token, Id = user.Id });
+            return Json(new SignInResponse() {SecurityToken = token, Id = user.Id});
         }
 
         [Authorize]
@@ -70,7 +70,7 @@ namespace clearlyApi.Controllers
         {
             var user = DbContext.Users
                 .FirstOrDefault(x => x.Login == User.Identity.Name && x.UserType == UserType.Admin);
-            
+
             if (user == null)
                 return Json(new BaseResponse
                 {
@@ -80,10 +80,33 @@ namespace clearlyApi.Controllers
 
 
             var users = DbContext.Users.Select(u => new UserResponseDTO(u)).ToList();
-            
+
             return Json(new DataResponse<UserResponseDTO>()
             {
                 Data = users
+            });
+        }
+
+        [Authorize]
+        [HttpGet("notifications")]
+        public IActionResult GetAllNotificatoins()
+        {
+            var user = DbContext.Users
+                .FirstOrDefault(x => x.Login == User.Identity.Name && x.UserType == UserType.Admin);
+
+            if (user == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+
+
+            var notifications = DbContext.Notifications.Select(u => new NotificationResponseDto(u)).ToList();
+
+            return Json(new DataResponse<NotificationResponseDto>()
+            {
+                Data = notifications
             });
         }
     }
