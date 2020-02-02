@@ -30,5 +30,7 @@ namespace ClearlyApi.Entities
         public ICollection<Message> AdminMessages { get; set; }
 
         public ICollection<AccountSession> Sessions { get; set; }
+        
+        public ICollection<Notification> Notifications { get; set; }
     }
 }

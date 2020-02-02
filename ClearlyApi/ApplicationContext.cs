@@ -13,7 +13,9 @@ namespace ClearlyApi
         public DbSet<Message> Messages { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<Package> Packages { get; set; }
-
+    
+        public DbSet<Notification> Notifications { get; set; }
+        
         public ApplicationContext()
         {
             Database.EnsureCreated();
@@ -26,7 +28,7 @@ namespace ClearlyApi
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-           
+
             modelBuilder.Entity<User>()
                 .HasOne(p => p.Person)
                 .WithOne(u => u.User)
@@ -51,6 +53,11 @@ namespace ClearlyApi
                 .HasMany(u => u.Sessions)
                 .WithOne(s => s.User)
                 .HasForeignKey(s => s.UserId);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(fk => fk.UserId);
 
         }
     }
