@@ -24,20 +24,20 @@ namespace clearlyApi.Controllers
     public class ChatController : Controller
     {
 
-        private ApplicationContext _dbContext { get; set; }
-        private ChatMessageHandler _webSocketHandler { get; set; }
+        private ApplicationContext DbContext { get; set; }
+        private ChatMessageHandler WebSocketHandler { get; set; }
 
         public ChatController(ApplicationContext dbContext, ChatMessageHandler webSocketHandler)
         {
-            this._dbContext = dbContext;
-            _webSocketHandler = webSocketHandler;
+            this.DbContext = dbContext;
+            WebSocketHandler = webSocketHandler;
         }
 
         [Authorize]
         [HttpPost("sendPhoto")]
         public async Task<IActionResult> SendPhoto(IFormFile file)
         {
-            var user = _dbContext.Users
+            var user = DbContext.Users
                 .FirstOrDefault(x => x.Login == User.Identity.Name);
 
             if (user == null)
@@ -54,7 +54,7 @@ namespace clearlyApi.Controllers
                     Message = "File empty"
                 });
 
-            var admin = _dbContext.Users
+            var admin = DbContext.Users
                .FirstOrDefault(x => x.UserType == UserType.Admin);
 
             if (admin == null)
@@ -64,8 +64,8 @@ namespace clearlyApi.Controllers
                     Message = "Admin not found"
                 });
 
-            string fileName = $"{CryptHelper.CreateMD5(DateTime.Now.ToString())}{Path.GetExtension(file.FileName)}";
-            string path = $"{Directory.GetCurrentDirectory()}/Files/";
+            var fileName = $"{CryptHelper.CreateMD5(DateTime.Now.ToString())}{Path.GetExtension(file.FileName)}";
+            var path = $"{Directory.GetCurrentDirectory()}/Files/";
 
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
@@ -85,8 +85,8 @@ namespace clearlyApi.Controllers
                 IsFromAdmin = false
             };
 
-            _dbContext.Messages.Add(message);
-            _dbContext.SaveChanges();
+            DbContext.Messages.Add(message);
+            DbContext.SaveChanges();
 
             SendMessageSocket(user.Login, new MessageDTO(message) { Data = fileName });
 
@@ -97,7 +97,7 @@ namespace clearlyApi.Controllers
         [HttpPost("adminSendPhoto/{toLogin}")]
         public async Task<IActionResult> AdminSendPhoto(IFormFile file, string toLogin)
         {
-            var user = _dbContext.Users
+            var user = DbContext.Users
                 .FirstOrDefault(x => x.Login == User.Identity.Name);
 
             if (user == null || user.UserType != UserType.Admin)
@@ -107,7 +107,7 @@ namespace clearlyApi.Controllers
                     Message = "User not found"
                 });
 
-            var toUser = _dbContext.Users
+            var toUser = DbContext.Users
                 .FirstOrDefault(x => x.Login == toLogin);
             if(toUser == null)
                 return Json(new BaseResponse
@@ -145,8 +145,8 @@ namespace clearlyApi.Controllers
                 IsFromAdmin = true
             };
 
-            _dbContext.Messages.Add(message);
-            _dbContext.SaveChanges();
+            DbContext.Messages.Add(message);
+            DbContext.SaveChanges();
 
             SendMessageSocket(toUser.Login, new MessageDTO(message) { Data = fileName});
 
@@ -159,8 +159,8 @@ namespace clearlyApi.Controllers
                 AdminId = user.Id,
                 IsFromAdmin = true
             };
-            _dbContext.Messages.Add(agePickerMessage);
-            _dbContext.SaveChanges();
+            DbContext.Messages.Add(agePickerMessage);
+            DbContext.SaveChanges();
 
             SendMessageSocket(toUser.Login, new MessageDTO(agePickerMessage));
 
@@ -177,7 +177,7 @@ namespace clearlyApi.Controllers
             if (pageNumber < 1)
                 pageNumber = 1;
 
-            var user = _dbContext.Users
+            var user = DbContext.Users
                 .Include(u => u.Person)
                 .FirstOrDefault(x => x.Login == User.Identity.Name);
 
@@ -188,7 +188,7 @@ namespace clearlyApi.Controllers
                     Message = "User not found"
                 });
 
-            var messages = _dbContext.Messages
+            var messages = DbContext.Messages
                 .Where(m => m.UserId == user.Id)
                 .ToList();
 
@@ -198,7 +198,7 @@ namespace clearlyApi.Controllers
             {
                 if (item.Type == MessageType.PackagesPicker)
                 {
-                    var packages = _dbContext.Packages
+                    var packages = DbContext.Packages
                                         .Include(x => x.Title)
                                         .Include(x => x.Description)
                                         .Take(3).ToList();
@@ -221,7 +221,7 @@ namespace clearlyApi.Controllers
         [HttpPost("message")]
         public IActionResult SendMessage([FromBody] MessageRequest request)
         {
-            var user = _dbContext.Users
+            var user = DbContext.Users
                 .FirstOrDefault(x => x.Login == User.Identity.Name);
 
             if (user == null)
@@ -245,7 +245,7 @@ namespace clearlyApi.Controllers
 
             if (user.UserType == UserType.Admin)
             {
-                var toUser = _dbContext.Users
+                var toUser = DbContext.Users
                 .FirstOrDefault(x => x.Login == request.ToUserLogin);
 
                 if (toUser == null)
@@ -263,7 +263,7 @@ namespace clearlyApi.Controllers
             }
             else
             {
-                var admin = _dbContext.Users
+                var admin = DbContext.Users
                     .FirstOrDefault(x => x.UserType == UserType.Admin);
 
                 if (admin == null)
@@ -278,8 +278,8 @@ namespace clearlyApi.Controllers
                 receiverLogin = admin.Login;
             }
 
-            _dbContext.Messages.Add(message);
-            _dbContext.SaveChanges();
+            DbContext.Messages.Add(message);
+            DbContext.SaveChanges();
 
             SendMessageSocket(receiverLogin, new MessageDTO(message) { Data = message.Content});
 
@@ -290,7 +290,7 @@ namespace clearlyApi.Controllers
         [HttpGet("setAge")]
         public IActionResult SetAge([FromQuery(Name = "age")] string ageInterval)
         {
-            var user = _dbContext.Users
+            var user = DbContext.Users
                 .Include(u => u.Person)
                 .FirstOrDefault(x => x.Login == User.Identity.Name);
 
@@ -301,7 +301,7 @@ namespace clearlyApi.Controllers
                     Message = "User not found"
                 });
 
-            var lastMessage = _dbContext.Messages
+            var lastMessage = DbContext.Messages
                 .Where(x => x.UserId == user.Id)
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefault();
@@ -329,12 +329,12 @@ namespace clearlyApi.Controllers
                 Created = DateTime.UtcNow
             };
 
-            _dbContext.Messages.Add(message);
+            DbContext.Messages.Add(message);
 
             SendMessageSocket(user.Login, new MessageDTO(message));
 
 
-            _dbContext.SaveChanges();
+            DbContext.SaveChanges();
 
             return Json(new BaseResponse());
         }
@@ -343,7 +343,7 @@ namespace clearlyApi.Controllers
         [HttpGet("setPayType/{type}")]
         public IActionResult SetPayType(PayType type)
         {
-            var user = _dbContext.Users
+            var user = DbContext.Users
                .Include(u => u.Person)
                .FirstOrDefault(x => x.Login == User.Identity.Name);
 
@@ -354,11 +354,11 @@ namespace clearlyApi.Controllers
                     Message = "User not found"
                 });
 
-            var orderExpired = _dbContext.Orders
+            var orderExpired = DbContext.Orders
                 .FirstOrDefault(x => x.UserId == user.Id && x.Status == OrderStatus.Request);
 
             if(orderExpired != null)
-                _dbContext.Orders.Remove(orderExpired);
+                DbContext.Orders.Remove(orderExpired);
     
             var order = new Order()
             {
@@ -367,16 +367,16 @@ namespace clearlyApi.Controllers
                 Status = type == PayType.Cash ? OrderStatus.Cash : OrderStatus.Request
             };
 
-            _dbContext.Orders.Add(order);
+            DbContext.Orders.Add(order);
 
-            _dbContext.SaveChanges();
+            DbContext.SaveChanges();
 
-            var lastMessage = _dbContext.Messages
+            var lastMessage = DbContext.Messages
                 .Where(x => x.UserId == user.Id)
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefault();
 
-            var packages = _dbContext.Packages
+            var packages = DbContext.Packages
                 .Include(x => x.Title)
                 .Include(x => x.Description)
                 .Take(3).ToList();
@@ -391,8 +391,8 @@ namespace clearlyApi.Controllers
                 Created = DateTime.UtcNow
             };
 
-            _dbContext.Messages.Add(message);
-            _dbContext.SaveChanges();
+            DbContext.Messages.Add(message);
+            DbContext.SaveChanges();
 
             var packagesListMessage = new MessageDTO(message)
             {
@@ -422,7 +422,7 @@ namespace clearlyApi.Controllers
                 return Json(new { Status = false, Message = "Required Property Not Found" });
 
 
-            var user = _dbContext.Users
+            var user = DbContext.Users
                .FirstOrDefault(x => x.Login == User.Identity.Name);
 
             if (user == null)
@@ -432,7 +432,7 @@ namespace clearlyApi.Controllers
                     Message = "User not found"
                 });
 
-            var pack = _dbContext.Packages.Find(request.PackageId);
+            var pack = DbContext.Packages.Find(request.PackageId);
             if(pack == null)
                 return Json(new BaseResponse
                 {
@@ -440,7 +440,7 @@ namespace clearlyApi.Controllers
                     Message = "Package not found"
                 });
 
-            var order = _dbContext.Orders.Find(request.OrderId);
+            var order = DbContext.Orders.Find(request.OrderId);
             if (order == null)
                 return Json(new BaseResponse
                 {
@@ -450,14 +450,14 @@ namespace clearlyApi.Controllers
 
             order.PackageId = pack.Id;
 
-            _dbContext.SaveChanges();
+            DbContext.SaveChanges();
 
             return Json(new BaseResponse());
         }
 
         private async Task SendMessageSocket(string login, MessageDTO message)
         {
-            await _webSocketHandler.SendMessageAsync(
+            await WebSocketHandler.SendMessageAsync(
                     login,
                     JsonConvert.SerializeObject(message)
                     );
