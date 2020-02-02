@@ -10,11 +10,9 @@ using ClearlyApi.Entities;
 using ClearlyApi.Enums;
 using ClearlyApi.Services.Auth;
 using ClearlyApi.Services.Chat;
-using ClearlyApi.Services.Chat.Manager;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Utils;
 
@@ -180,7 +178,14 @@ namespace clearlyApi.Controllers
 
             SendMessageSocket(toUser.Login, new MessageDTO(message) { Data = fileName});
 
+            var notification = DbContext.Notifications.FirstOrDefault(x => x.UserId == toUser.Id && x.Type == NotificationType.Photo);
 
+            if (notification != null)
+            {
+                DbContext.Remove(notification);
+                DbContext.SaveChanges();
+            }
+            
             var agePickerMessage = new Message
             {
                 Type = MessageType.AgePicker,
@@ -196,7 +201,60 @@ namespace clearlyApi.Controllers
 
             return Json(new BaseResponse());
         }
-        
+
+        [Authorize]
+        [HttpPost("sendMessage")]
+        public IActionResult SendMessage([FromBody] MessageRequest request)
+        {
+            var user = DbContext.Users
+                .FirstOrDefault(x => x.Login == User.Identity.Name && x.UserType == UserType.Admin);
+            
+            if (user == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+            
+            if (request == null)
+                return Json(new { Status = false, Message = "Request cannot be null" });
+            
+            var toUser = DbContext.Users
+                .FirstOrDefault(x => x.Login == request.ToUserLogin);
+            
+            if (toUser == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+            
+            var message = new Message
+            {
+                Type = MessageType.Text,
+                Content = request.Text,
+                
+                AdminId = user.Id,
+                UserId = toUser.Id,
+                IsFromAdmin = true,
+                
+                Created = DateTime.UtcNow
+            };
+
+            DbContext.Messages.Add(message);
+            DbContext.SaveChanges();
+
+            var notification = DbContext.Notifications.FirstOrDefault(x => x.UserId == toUser.Id && x.Type == NotificationType.Message);
+            if (notification != null)
+            {
+                DbContext.Remove(notification);
+                DbContext.SaveChanges();
+            }
+            
+            SendMessageSocket(toUser.Login, new MessageDTO(message) { Data = message.Content});
+            
+            return Json(new BaseResponse());
+        }
         
         private async Task SendMessageSocket(string login, MessageDTO message)
         {

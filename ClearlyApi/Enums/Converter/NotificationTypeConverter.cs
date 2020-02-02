@@ -9,13 +9,13 @@ namespace ClearlyApi.Enums.Converter
             string typeText;
             switch (type)
             {
-                case NotificationType.message:
+                case NotificationType.Message:
                     typeText = "сообщение";
                     break;
-                case NotificationType.photo:
+                case NotificationType.Photo:
                     typeText = "фото";
                     break;
-                case NotificationType.orderCreated:
+                case NotificationType.OrderCreated:
                     typeText = "заказ был создан";
                     break;
                 default:
