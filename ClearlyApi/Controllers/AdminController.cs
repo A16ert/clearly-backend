@@ -7,7 +7,9 @@ using clearlyApi.Dto.Response;
 using ClearlyApi.Entities;
 using ClearlyApi.Enums;
 using ClearlyApi.Services.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Utils;
 
 namespace clearlyApi.Controllers
@@ -60,6 +62,29 @@ namespace clearlyApi.Controllers
             var token = AuthService.CreateToken(user);
 
             return Json(new SignInResponse() { SecurityToken = token, Id = user.Id });
+        }
+
+        [Authorize]
+        [HttpGet("users")]
+        public IActionResult GetAllUsers()
+        {
+            var user = DbContext.Users
+                .FirstOrDefault(x => x.Login == User.Identity.Name && x.UserType == UserType.Admin);
+            
+            if (user == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+
+
+            var users = DbContext.Users.Select(u => new UserResponseDTO(u)).ToList();
+            
+            return Json(new DataResponse<UserResponseDTO>()
+            {
+                Data = users
+            });
         }
     }
 }
