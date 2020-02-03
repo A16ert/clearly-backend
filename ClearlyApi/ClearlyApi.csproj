@@ -41,4 +41,8 @@
       <_ContentIncludedByDefault Remove="Files\web.config" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Migrations" />
+    </ItemGroup>
+
 </Project>
