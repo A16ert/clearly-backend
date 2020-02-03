@@ -96,8 +96,10 @@ namespace clearlyApi.Controllers
 
 
             var users = DbContext.Users.Select(u => new UserResponseDTO(u)).ToList();
+
+            var count = DbContext.Users.Count();
             
-            var header = new System.Net.Http.Headers.ContentRangeHeaderValue(0, DbContext.Users.Count(), DbContext.Users.Count()).ToString();
+            var header = new System.Net.Http.Headers.ContentRangeHeaderValue(count != 0 ? count : 1).ToString();
             this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Content-Range", header));
             
             return Json(users);

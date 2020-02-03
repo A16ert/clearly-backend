@@ -95,6 +95,7 @@ namespace ClearlyApi
                 builder
                     .AllowAnyOrigin()
                     .AllowAnyHeader()
+                    .WithHeaders("Content-Range")
                     .WithMethods("GET", "POST", "PUT", "DELETE");
             });
             app.UseHttpsRedirection();
