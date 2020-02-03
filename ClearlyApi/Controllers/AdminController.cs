@@ -101,7 +101,7 @@ namespace clearlyApi.Controllers
             
             var header = new System.Net.Http.Headers.ContentRangeHeaderValue(count != 0 ? count : 1).ToString();
             this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Content-Range", header));
-            
+            this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Access-Control-Expose-Headers", "Content-Range"));
             return Json(users);
         }
 
