@@ -93,10 +93,7 @@ namespace clearlyApi.Controllers
 
             var users = DbContext.Users.Select(u => new UserResponseDTO(u)).ToList();
 
-            return Json(new DataResponse<UserResponseDTO>()
-            {
-                Data = users
-            });
+            return Json(users);
         }
 
         [Authorize]
