@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using ClearlyApi;
 using clearlyApi.Dto.Request;
@@ -88,6 +89,15 @@ namespace clearlyApi.Controllers
             DbContext.Messages.Add(message);
             DbContext.SaveChanges();
 
+            var notification = new Notification()
+            {
+                UserId =  user.Id,
+                Type = NotificationType.Photo,
+                Text =  message.Content
+            };
+            DbContext.Notifications.Add(notification);
+            DbContext.SaveChanges();
+            
             SendMessageSocket(user.Login, new MessageDTO(message) { Data = fileName });
 
             return Json(new BaseResponse());
@@ -160,55 +170,41 @@ namespace clearlyApi.Controllers
             if (request == null)
                 return Json(new { Status = false, Message = "Request cannot be null" });
 
+            var admin = DbContext.Users
+                    .FirstOrDefault(x => x.UserType == UserType.Admin);
+
+            if (admin == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "Admin not found"
+                });
 
             var message = new Message
             {
                 Type = MessageType.Text,
                 Content = request.Text,
-                Created = DateTime.UtcNow
+                Created = DateTime.UtcNow,
+                UserId = user.Id,
+                AdminId = admin.Id,
+                IsFromAdmin = false
             };
-            string receiverLogin = "";
-
-            if (user.UserType == UserType.Admin)
-            {
-                var toUser = DbContext.Users
-                .FirstOrDefault(x => x.Login == request.ToUserLogin);
-
-                if (toUser == null)
-                    return Json(new BaseResponse
-                    {
-                        Status = false,
-                        Message = "User not found"
-                    });
-
-                message.AdminId = user.Id;
-                message.UserId = toUser.Id;
-                message.IsFromAdmin = true;
-
-                receiverLogin = toUser.Login;
-            }
-            else
-            {
-                var admin = DbContext.Users
-                    .FirstOrDefault(x => x.UserType == UserType.Admin);
-
-                if (admin == null)
-                    return Json(new BaseResponse
-                    {
-                        Status = false,
-                        Message = "Admin not found"
-                    });
-
-                message.UserId = user.Id;
-                message.AdminId = admin.Id;
-                receiverLogin = admin.Login;
-            }
-
+            
             DbContext.Messages.Add(message);
             DbContext.SaveChanges();
 
-            SendMessageSocket(receiverLogin, new MessageDTO(message) { Data = message.Content});
+            SendMessageSocket(admin.Login, new MessageDTO(message) { Data = message.Content});
 
+
+            var notification = new Notification()
+            {
+                UserId =  user.Id,
+                Type = NotificationType.Message,
+                Text =  message.Content
+            };
+
+            DbContext.Notifications.Add(notification);
+            DbContext.SaveChanges();
             return Json(new BaseResponse());
         }
 
@@ -290,7 +286,8 @@ namespace clearlyApi.Controllers
             {
                 UserId = user.Id,
                 Created = DateTime.UtcNow,
-                Status = type == PayType.Cash ? OrderStatus.Cash : OrderStatus.Request
+                Updated = DateTime.UtcNow,
+                Status = OrderStatus.Request
             };
 
             DbContext.Orders.Add(order);
@@ -381,6 +378,103 @@ namespace clearlyApi.Controllers
             return Json(new BaseResponse());
         }
 
+        [Authorize]
+        [HttpPost("delivery")]
+        public IActionResult SetDeliveryAddress([FromBody] DeliveryRequestDTO request)
+        {
+            if (request == null)
+                return Json(new { Status = false, Message = "Request cannot be null" });
+
+            if (!Validator.TryValidateObject(request, new ValidationContext(request), null, true))
+                return Json(new { Status = false, Message = "Required Property Not Found" });
+
+
+            var user = DbContext.Users
+                .FirstOrDefault(x => x.Login == User.Identity.Name);
+            if (user == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+            
+            var admin = DbContext.Users
+                .FirstOrDefault(x => x.UserType == UserType.Admin);
+
+            if (admin == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "Admin not found"
+                });
+            
+            var order = DbContext.Orders
+                .Include(u => u.Delivery)
+                .FirstOrDefault(o => o.Id == request.OrderId);
+            
+            if(order == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "Заказ не найден"
+                });
+
+            if (order.Delivery != null)
+            {
+                var message = new Message
+                {
+                    Type = MessageType.Text,
+                    Content = "Адрес доставки уже задан",
+                    Created = DateTime.UtcNow,
+                    UserId = user.Id,
+                    AdminId = admin.Id,
+                    IsFromAdmin = true
+                };
+            
+                DbContext.Messages.Add(message);
+                DbContext.SaveChanges();
+
+                SendMessageSocket(user.Login, new MessageDTO(message));
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "Адрес доставки уже задан"
+                });
+            }
+            
+            var delivery = new Delivery()
+            {
+                Created =  DateTime.Now,
+                OrderId = request.OrderId,
+                City =  request.City,
+                HouseNumber = request.HouseNumber,
+                Street = request.Street,
+                Apartment = request.Apartment,
+                PhoneNumber =  request.PhoneNumber
+            };
+
+            DbContext.Deliveries.Add(delivery);
+            
+            order.Status = OrderStatus.AwaitDelivery;
+            
+            DbContext.SaveChanges();
+            
+            var message2 = new Message
+            {
+                Type = MessageType.Text,
+                Content = "Доставка успешно оформлена",
+                Created = DateTime.UtcNow,
+                UserId = user.Id,
+                AdminId = admin.Id,
+                IsFromAdmin = true
+            };
+            
+            DbContext.Messages.Add(message2);
+            DbContext.SaveChanges();
+
+            SendMessageSocket(user.Login, new MessageDTO(message2));
+            return Json(new BaseResponse());
+        }
         private async Task SendMessageSocket(string login, MessageDTO message)
         {
             await WebSocketHandler.SendMessageAsync(
@@ -389,6 +483,6 @@ namespace clearlyApi.Controllers
                     );
         }
 
-
+        
     }
 }

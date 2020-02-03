@@ -9,12 +9,11 @@ namespace ClearlyApi
         public DbSet<User> Users { get; set; }
         public DbSet<AccountSession> AccountSessions { get; set; }
         public DbSet<ActivationCode> ActivationCodes { get; set; }
-        public DbSet<LocalizedString> LocalizedStrings { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<Package> Packages { get; set; }
-    
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Delivery> Deliveries { get; set; }
         
         public ApplicationContext()
         {
@@ -58,6 +57,11 @@ namespace ClearlyApi
                 .HasOne(n => n.User)
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(fk => fk.UserId);
+
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Delivery)
+                .WithOne(d => d.Order)
+                .HasForeignKey<Delivery>(fk => fk.OrderId);
 
         }
     }

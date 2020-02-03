@@ -13,7 +13,9 @@ namespace clearlyApi.Dto.Response
             Id = model.Id;
             
             Type = model.Type;
-            Text = NotificationTypeConverter.ToString(model.Type);
+            TypeText = NotificationTypeConverter.ToString(model.Type);
+
+            Text = model.Text;
             
             Login = model.User.Login;
             UserId = model.User.Id;
@@ -30,6 +32,9 @@ namespace clearlyApi.Dto.Response
         
         [JsonProperty("type")]
         public NotificationType Type { get; set; }
+        
+        [JsonProperty("typeText")]
+        public string TypeText { get; set; }
         
         [JsonProperty("text")]
         public string Text { get; set; }

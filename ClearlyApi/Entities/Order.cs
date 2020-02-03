@@ -11,14 +11,14 @@ namespace ClearlyApi.Entities
 
         public int? PackageId { get; set; }
         public Package Package { get; set; }
-
+        
+        public Delivery Delivery { get; set; }
+        
         [DataType(DataType.DateTime)]
         public DateTime Created { get; set; }
 
-        public string BankUrl { get; set; }
-
-        public string BankOrderId { get; set; }
-
+        [DataType(DataType.DateTime)]
+        public DateTime Updated { get; set; }
         public OrderStatus Status { get; set; }
     }
 }

@@ -121,6 +121,31 @@ namespace clearlyApi.Controllers
                 Data = notifications
             });
         }
+
+        [Authorize]
+        [HttpGet("orders")]
+        public IActionResult GetAllOrders()
+        {
+            var user = DbContext.Users
+                .FirstOrDefault(x => x.Login == User.Identity.Name && x.UserType == UserType.Admin);
+
+            if (user == null)
+                return Json(new BaseResponse
+                {
+                    Status = false,
+                    Message = "User not found"
+                });
+
+
+            var orders = DbContext.Orders
+                .Select(u => new OrderResponseDTO(u))
+                .ToList();
+
+            return Json(new DataResponse<OrderResponseDTO>()
+            {
+                Data = orders
+            });
+        }
         
         [Authorize]
         [HttpPost("sendPhoto/{toLogin}")]
