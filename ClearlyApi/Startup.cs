@@ -90,6 +90,13 @@ namespace ClearlyApi
             app.UseAuthentication();
 //            app.UseAuthorization();
 
+            app.UseCors(builder =>
+            {
+                builder
+                    .AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .WithMethods("GET", "POST", "PUT", "DELETE");
+            });
             app.UseHttpsRedirection();
 
             app.UseSwagger();
