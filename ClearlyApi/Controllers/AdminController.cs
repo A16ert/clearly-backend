@@ -122,10 +122,13 @@ namespace clearlyApi.Controllers
 
             var notifications = DbContext.Notifications.Select(u => new NotificationResponseDto(u)).ToList();
 
-            return Json(new DataResponse<NotificationResponseDto>()
-            {
-                Data = notifications
-            });
+            var count = DbContext.Notifications.Count();
+            
+            var header = new System.Net.Http.Headers.ContentRangeHeaderValue(count != 0 ? count : 1).ToString();
+            this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Content-Range", header));
+            this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Access-Control-Expose-Headers", "Content-Range"));
+            
+            return Json(notifications);
         }
 
         [Authorize]
@@ -147,10 +150,13 @@ namespace clearlyApi.Controllers
                 .Select(u => new OrderResponseDTO(u))
                 .ToList();
 
-            return Json(new DataResponse<OrderResponseDTO>()
-            {
-                Data = orders
-            });
+            var count = DbContext.Orders.Count();
+            
+            var header = new System.Net.Http.Headers.ContentRangeHeaderValue(count != 0 ? count : 1).ToString();
+            this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Content-Range", header));
+            this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Access-Control-Expose-Headers", "Content-Range"));
+            
+            return Json(orders);
         }
         
         [Authorize]
