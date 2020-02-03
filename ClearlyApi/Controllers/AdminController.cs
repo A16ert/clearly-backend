@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
@@ -11,8 +12,11 @@ using ClearlyApi.Enums;
 using ClearlyApi.Services.Auth;
 using ClearlyApi.Services.Chat;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Utils;
 
@@ -92,7 +96,10 @@ namespace clearlyApi.Controllers
 
 
             var users = DbContext.Users.Select(u => new UserResponseDTO(u)).ToList();
-
+            
+            var header = new System.Net.Http.Headers.ContentRangeHeaderValue(0, 24, DbContext.Users.Count()).ToString();
+            this.Response.Headers.Add(new KeyValuePair<string, StringValues>("Content-Range", header));
+            
             return Json(users);
         }
 
